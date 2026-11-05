@@ -5,6 +5,7 @@ A small ambient widget under the message composer that answers three questions:
 - **What is my local time?** A live clock in the browser's local time zone.
 - **Is DeepSeek peak or off-peak right now?** A colored status dot and label.
 - **When does the rate change?** A live countdown to the next peak or off-peak window.
+- **Should this message wait?** During peak, a **Block send** switch appears on and locks the composer until you turn it off.
 
 ## Rate schedule
 
@@ -37,11 +38,29 @@ open). It follows the active Harness locale (English and Simplified Chinese
 dictionaries ship in `client.js`) and the host theme through `--dsw-alias-*`
 tokens.
 
+## Peak send guard
+
+During a peak window the dock adds a **Block send** switch. It starts on, so
+the composer is inert until you turn it off:
+
+- The switch raises `ctx.conversation.blocks` for the current session with a
+  localized reason. Turning it off clears that block and lets you compose and
+  send for the rest of the window.
+- The next peak window arms it again. A manual off is an override for the
+  current window only, and it is not persisted across a page reload.
+- A one-minute timer, aligned to the minute boundary, re-evaluates peak status
+  and applies transitions even if the tab was idle or asleep.
+- DSH's public composer-block API makes the **whole composer inert** (editor and
+  send), not only the send button; there is no public send-only hook today. If
+  one is added, the guard can be narrowed to the send action.
+- Only the block whose reason matches this plugin's is cleared, so another
+  plugin's composer block is left alone.
+
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `client.js` | Clock, peak/off-peak computation, countdown, styles |
+| `client.js` | Clock, peak/off-peak computation, countdown, send guard, styles |
 | `index.js` | Empty Host half that claims the Loader row |
 | `cordis.patch.yml` | Inserts the `deepseek-peak-clock` row |
 | `locale/en.json`, `locale/zh.json` | Plugin Manager title/description |
@@ -53,4 +72,5 @@ tokens.
   matches the rest of the operating system.
 - The countdown updates on second boundaries and is recalculated from
   `Date.now()` on each tick, so sleep/wake and clock changes self-correct.
-- The widget is read-only: it has no host-side behavior and stores nothing.
+- The widget has no host-side behavior and stores nothing durably; the send
+  guard only writes the transient in-memory composer block for its session.
