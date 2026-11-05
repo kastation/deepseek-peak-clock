@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DeepSeek 峰谷时钟",
+    "description": "显示本地时间、DeepSeek 峰谷状态，以及距离下次费率切换的实时倒计时。"
+  }
+}

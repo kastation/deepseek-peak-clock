@@ -1,0 +1,3 @@
+- insert:
+    - id: deepseek-peak-clock
+      name: '@local/deepseek-peak-clock'
