@@ -45,11 +45,16 @@ the composer is inert until you turn it off:
 
 - The switch raises `ctx.conversation.blocks` for the current session with a
   localized reason. Turning it off clears that block and lets you compose and
-  send for the rest of the window.
-- The next peak window arms it again. A manual off is an override for the
-  current window only, and it is not persisted across a page reload.
+  send.
+- Turning it off starts a **60-second override**. When the timer fires and the
+  peak window is still active, the switch turns itself back on and the composer
+  locks again. Turn it off again for another 60 seconds. Turning it back on
+  manually cancels the pending re-lock.
+- If the peak window ends during the override, the timer is cancelled and the
+  switch disappears. The next peak window arms it again.
 - A one-minute timer, aligned to the minute boundary, re-evaluates peak status
-  and applies transitions even if the tab was idle or asleep.
+  and applies transitions even if the tab was idle or asleep. It does not
+  override an active 60-second unlock window.
 - DSH's public composer-block API makes the **whole composer inert** (editor and
   send), not only the send button; there is no public send-only hook today. If
   one is added, the guard can be narrowed to the send action.

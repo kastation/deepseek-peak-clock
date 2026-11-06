@@ -1,6 +1,6 @@
 {
   "name": "@local/deepseek-peak-clock",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Local clock with DeepSeek peak/off-peak status and a countdown to the next rate window.",

@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({
       'tooltip.holidays': 'Holiday calendar bundled: 2026 Chinese public holidays.',
       'guard.label': 'Block send',
       'guard.aria': 'Block sending during DeepSeek peak hours',
-      'guard.tooltip': 'On: the composer is locked during DeepSeek peak hours. Turn it off to compose and send.',
+      'guard.tooltip': 'On: the composer is locked during DeepSeek peak hours. Turn it off to compose and send; it re-locks 60 seconds later.',
       'guard.blockReason': 'DeepSeek peak rates are active. Turn off “Block send” below the composer to send.',
     };
     const zh = {
@@ -39,7 +39,7 @@ window.__ModuleLoader__.load({
       'tooltip.holidays': '已内置节假日日历：2026 年中国法定节假日。',
       'guard.label': '阻止发送',
       'guard.aria': '在 DeepSeek 高峰时段阻止发送',
-      'guard.tooltip': '开启时，DeepSeek 高峰时段输入框会被锁定；关闭后才能输入和发送。',
+      'guard.tooltip': '开启时，DeepSeek 高峰时段输入框会被锁定；关闭后可输入和发送，60 秒后会再次锁定。',
       'guard.blockReason': 'DeepSeek 高峰计费中。关闭输入框下方的“阻止发送”后即可输入和发送。',
     };
 
@@ -199,6 +199,14 @@ window.__ModuleLoader__.load({
       const [guardNow, setGuardNow] = React.useState(() => Date.now());
       const [guardOn, setGuardOn] = React.useState(true);
       const lastPeakStart = React.useRef(null);
+      const rearmTimer = React.useRef(null);
+
+      function clearRearm() {
+        if (rearmTimer.current !== null) {
+          clearTimeout(rearmTimer.current);
+          rearmTimer.current = null;
+        }
+      }
 
       React.useEffect(() => {
         let timer;
@@ -218,7 +226,11 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         let timer;
         const check = () => {
-          setGuardNow(Date.now());
+          const at = Date.now();
+          setGuardNow(at);
+          // Re-arm on the minute check only when no 60-second override is
+          // already counting down; the override owns the exact unlock window.
+          if (isPeakAt(at) && rearmTimer.current === null) setGuardOn(true);
           timer = setTimeout(check, 60000 - (Date.now() % 60000) + 25);
         };
         timer = setTimeout(check, 60000 - (Date.now() % 60000) + 25);
@@ -229,16 +241,41 @@ window.__ModuleLoader__.load({
       const guardPeakStart = peakWindowStart(guardNow);
 
       /*
-       * Arm the guard at the start of every peak window. Turning it off is a
-       * manual override for the rest of that window only: the same window
-       * keeps the user's choice, and the next window arms again.
+       * Arm the guard at the start of every peak window, and clear any
+       * override left over from the previous one.
        */
       React.useEffect(() => {
         if (guardPeakStart !== null && guardPeakStart !== lastPeakStart.current) {
+          clearRearm();
           setGuardOn(true);
         }
         lastPeakStart.current = guardPeakStart;
       }, [guardPeakStart]);
+
+      /*
+       * Turning the guard off is a 60-second override: it re-locks by itself
+       * if the peak window is still active when the timer fires. Turning it
+       * back on manually cancels the override.
+       */
+      function toggleGuard() {
+        if (guardOn) {
+          setGuardOn(false);
+          clearRearm();
+          rearmTimer.current = setTimeout(() => {
+            rearmTimer.current = null;
+            if (isPeakAt(Date.now())) setGuardOn(true);
+          }, 60000);
+        } else {
+          setGuardOn(true);
+          clearRearm();
+        }
+      }
+
+      React.useEffect(() => () => clearRearm(), []);
+
+      React.useEffect(() => {
+        if (!guardPeak) clearRearm();
+      }, [guardPeak]);
 
       /*
        * A composer block is the supported way for one plugin to stop a
